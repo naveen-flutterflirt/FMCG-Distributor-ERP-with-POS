@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
   FileText,
@@ -19,6 +20,8 @@ import {
   BarChart3,
   Settings,
   X,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 
 export const navigationItems = [
@@ -45,6 +48,7 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -58,12 +62,12 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
 
       {/* Main Sidebar with dark green theme and link icons */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-56 bg-[#072428] border-r border-[#0c383e] flex flex-col py-5 px-3 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-56 bg-[#072428] border-r border-[#0c383e] flex flex-col py-4 px-3 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Brand Header: "+" in teal rounded square + "[Distributor] ERP" */}
-        <div className="flex items-center justify-between px-2 mb-6">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between px-2 mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-md bg-[#00897b] flex items-center justify-center text-white font-bold text-lg leading-none shadow-sm">
               +
@@ -83,9 +87,30 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
           )}
         </div>
 
-        {/* Navigation list: 14 links with respective icons */}
-        <nav className="flex-1 space-y-1">
-          {navigationItems.map((item) => {
+        {/* Navigation list: filtered by user role */}
+        <nav className="flex-1 space-y-1 overflow-y-auto pr-0.5">
+          {navigationItems
+            .filter((item) => {
+              const role = user?.role || 'distributor_owner';
+              // distributor_owner has access to all modules
+              if (role === 'distributor_owner') return true;
+
+              // Role based access restrictions
+              if (role === 'billing_operator') {
+                return ['/', '/orders-billing', '/delivery-fleet', '/outlets-beats'].includes(item.href);
+              }
+              if (role === 'godown_manager') {
+                return ['/', '/godown', '/purchase'].includes(item.href);
+              }
+              if (role === 'cashier') {
+                return ['/', '/collections', '/accounts', '/outlets-beats'].includes(item.href);
+              }
+              if (role === 'salesman') {
+                return ['/', '/van-sales', '/field-team'].includes(item.href);
+              }
+              return true;
+            })
+            .map((item) => {
             const isActive =
               item.href === '/'
                 ? pathname === '/'
@@ -113,6 +138,27 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
             );
           })}
         </nav>
+
+        {/* Bottom Profile & Logout Button in Sidebar */}
+        <div className="mt-3 pt-3 border-t border-[#0c383e] space-y-2">
+          <div className="flex items-center gap-2 px-1 text-slate-300">
+            <div className="w-6 h-6 rounded-full bg-teal-800/80 border border-teal-500/40 flex items-center justify-center text-teal-200 shrink-0">
+              <UserIcon className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-slate-200 truncate">{user?.email || 'admin@gmail.com'}</p>
+              <p className="text-[9px] text-teal-400 font-semibold uppercase">{user?.role === 'distributor_owner' ? 'OWNER' : 'DISTRIBUTOR'}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/70 border border-rose-900/40 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
     </>
   );

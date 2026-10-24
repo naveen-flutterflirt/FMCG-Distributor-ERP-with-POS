@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import NewOrderModal from '../common/NewOrderModal';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface ERPLayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,25 @@ interface ERPLayoutProps {
 export default function ERPLayout({ children }: ERPLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
+  const { user, token, loading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!loading && !token && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [loading, token, pathname, router]);
+
+  // Loading splash while checking token
+  if (loading || (!token && pathname !== '/login')) {
+    return (
+      <div className="min-h-screen bg-[#072428] flex flex-col items-center justify-center text-white">
+        <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-teal-200">Verifying session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f1f4f8] flex text-slate-800 font-sans">
@@ -41,14 +62,24 @@ export default function ERPLayout({ children }: ERPLayoutProps) {
             </span>
           </div>
 
-          <button
-            onClick={() => setIsNewOrderOpen(true)}
-            className="bg-[#00897b] hover:bg-[#00796b] text-white px-2.5 py-1 rounded text-xs font-semibold shadow-xs"
-          >
-            + Order
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsNewOrderOpen(true)}
+              className="bg-[#00897b] hover:bg-[#00796b] text-white px-2.5 py-1 rounded text-xs font-semibold shadow-xs"
+            >
+              + Order
+            </button>
+            <button
+              onClick={logout}
+              title="Logout"
+              className="p-1.5 text-red-300 hover:text-white rounded bg-red-950/40"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
+        {/* Main Content Area */}
         <main className="flex-1 p-3.5 sm:p-5 lg:p-6 overflow-x-hidden">
           {children}
         </main>

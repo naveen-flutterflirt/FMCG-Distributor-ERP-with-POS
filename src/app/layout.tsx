@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "FMCG Distributor ERP — FlutterFlirt Enterprise",
+  title: "FMCG Distributor ERP — Enterprise POS & Distribution",
   description: "One system for sales, route & van sales, POS, schemes, warehouse, finance and field teams",
   icons: {
     icon: "/icon.svg",
@@ -19,9 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NotificationProvider>
-          {children}
-        </NotificationProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

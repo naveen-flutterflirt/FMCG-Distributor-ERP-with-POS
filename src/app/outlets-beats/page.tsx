@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ERPLayout from '@/components/layout/ERPLayout';
 import { useNotification } from '@/context/NotificationContext';
+import { useAuth } from '@/context/AuthContext';
+import OnboardOutletModal from '@/components/common/OnboardOutletModal';
+import { SkeletonTable } from '@/components/common/Skeleton';
 import {
   Store,
   MapPin,
@@ -14,22 +17,62 @@ import {
   Phone,
   CreditCard,
   Building2,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
-import { MOCK_OUTLETS, Outlet } from '@/data/mockData';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function OutletsBeatsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [channelFilter, setChannelFilter] = useState('All');
-  const [outlets, setOutlets] = useState<Outlet[]>(MOCK_OUTLETS);
+  const [outlets, setOutlets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const { showNotification } = useNotification();
+  const { token } = useAuth();
+
+  const fetchOutlets = async () => {
+    try {
+      setLoading(true);
+      const authToken = token || localStorage.getItem('fmcg_auth_token') || localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (channelFilter !== 'All') params.append('channel', channelFilter);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await fetch(`${API_BASE}/outlets?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        }
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch outlets');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setOutlets(data.data);
+      }
+    } catch (err: any) {
+      console.error(err);
+      showNotification({
+        title: 'Error Loading Outlets',
+        message: err.message || 'Could not fetch outlets from database.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOutlets();
+  }, [token, channelFilter]);
 
   const filtered = outlets.filter(o => {
     const matchesSearch = o.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          o.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          o.route.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesChannel = channelFilter === 'All' || o.channel === channelFilter;
-    return matchesSearch && matchesChannel;
+                          (o.ownerName && o.ownerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (o.route && o.route.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSearch;
   });
 
   return (
@@ -44,21 +87,26 @@ export default function OutletsBeatsPage() {
               Retail Outlets &amp; Beat Sequencing
             </h1>
             <p className="text-xs text-slate-500">
-              Manage 3,180 active retail stores, geotagged beats, credit terms, and GSTIN registration.
+              Manage active retail stores, geotagged beats, credit terms, and GSTIN registration in real time.
             </p>
           </div>
 
-          <button
-            onClick={() => showNotification({
-              title: 'Outlet Onboarding Active',
-              message: 'GPS Geotagging enabled. Enter GSTIN for automatic trade name, address and tax filing verification.',
-              type: 'info'
-            })}
-            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#0d9488] hover:bg-[#0f766e] rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Onboard Outlet</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchOutlets}
+              title="Refresh Outlets"
+              className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-2xs cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-teal-600' : ''}`} />
+            </button>
+            <button
+              onClick={() => setIsOnboardModalOpen(true)}
+              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#0d9488] hover:bg-[#0f766e] rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Onboard Outlet</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter bar */}
@@ -91,9 +139,12 @@ export default function OutletsBeatsPage() {
         </div>
 
         {/* Outlets Table */}
-        <div className="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+        {loading && outlets.length === 0 ? (
+          <SkeletonTable rows={6} cols={8} />
+        ) : (
+          <div className="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 text-[11px]">
                   <th className="py-2.5 px-3">Outlet Name</th>
@@ -121,30 +172,28 @@ export default function OutletsBeatsPage() {
                     </td>
                     <td className="py-3 px-3">
                       <span className="font-semibold text-slate-800">{o.route}</span>
-                      <span className="block text-[10px] text-teal-700">{o.beatId}</span>
+                      <span className="block text-[10px] text-teal-700">{o.beatId || o.beatName || 'Assigned'}</span>
                     </td>
                     <td className="py-3 px-3 text-slate-600 font-medium">
                       {o.channel}
                     </td>
                     <td className="py-3 px-3 text-right font-medium text-slate-800">
-                      ₹{o.creditLimit.toLocaleString()}
+                      ₹{(o.creditLimit || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-3 text-right font-bold text-slate-900">
-                      ₹{o.currentBalance.toLocaleString()}
+                      ₹{(o.currentBalance || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <span className={`font-semibold ${o.overdueDays > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
-                        {o.overdueDays > 0 ? `${o.overdueDays} d` : '0 d'}
+                      <span className={`font-semibold ${(o.overdueDays || 0) > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                        {(o.overdueDays || 0) > 0 ? `${o.overdueDays} d` : '0 d'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                          o.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        o.status === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
                         {o.status === 'active' ? 'Active' : 'Credit Hold'}
                       </span>
                     </td>
@@ -153,7 +202,28 @@ export default function OutletsBeatsPage() {
               </tbody>
             </table>
           </div>
+
+          {filtered.length === 0 && !loading && (
+            <div className="p-8 text-center text-slate-500 text-xs">
+              No retail outlets found. Click "Onboard Outlet" to add one.
+            </div>
+          )}
         </div>
+      )}
+
+        {/* Onboard Outlet Modal */}
+        <OnboardOutletModal
+          isOpen={isOnboardModalOpen}
+          onClose={() => setIsOnboardModalOpen(false)}
+          onSuccess={(newOutlet) => {
+            showNotification({
+              title: 'Outlet Onboarded',
+              message: `${newOutlet.name} added to ${newOutlet.route} beat sequence.`,
+              type: 'success'
+            });
+            fetchOutlets();
+          }}
+        />
       </div>
     </ERPLayout>
   );

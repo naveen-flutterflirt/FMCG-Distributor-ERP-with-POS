@@ -16,6 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { COMPANIES } from '@/data/mockData';
+import { useAuth } from '@/context/AuthContext';
 
 interface HeaderProps {
   onToggleMobile: () => void;
@@ -32,6 +33,8 @@ export default function Header({
 }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const isDemoAdmin = user?.email === 'admin@gmail.com' || user?.email === 'admin@distributor.com';
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-4">
@@ -105,31 +108,41 @@ export default function Header({
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 font-semibold text-slate-800">
                 <span>Operational Alerts</span>
                 <span className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full font-bold">
-                  3 Critical
+                  {isDemoAdmin ? '3 Critical' : '0 Alerts'}
                 </span>
               </div>
               <div className="py-2 space-y-2">
-                <div className="flex gap-2.5 p-2 bg-amber-50/60 rounded-lg border border-amber-100">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-slate-800">Van 2 Shortage −₹1,240</p>
-                    <p className="text-[11px] text-slate-600">Imran Khan - Route R6 Industrial Area needs cashier sign-off.</p>
+                {isDemoAdmin ? (
+                  <>
+                    <div className="flex gap-2.5 p-2 bg-amber-50/60 rounded-lg border border-amber-100">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Van 2 Shortage −₹1,240</p>
+                        <p className="text-[11px] text-slate-600">Route R6 Industrial Area needs cashier sign-off.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5 p-2 bg-rose-50/60 rounded-lg border border-rose-100">
+                      <Clock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Company B Claim Window</p>
+                        <p className="text-[11px] text-slate-600">Closes in 6 days for September schemes.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5 p-2 bg-teal-50/60 rounded-lg border border-teal-100">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Bank Auto-Match</p>
+                        <p className="text-[11px] text-slate-600">Statements reconciled live.</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-6 text-center text-slate-400">
+                    <CheckCircle2 className="w-6 h-6 text-teal-600 mx-auto mb-1.5" />
+                    <p className="font-medium text-slate-700">All systems operational</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">No critical bottlenecks or variance alerts.</p>
                   </div>
-                </div>
-                <div className="flex gap-2.5 p-2 bg-rose-50/60 rounded-lg border border-rose-100">
-                  <Clock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-slate-800">Company B Claim Window</p>
-                    <p className="text-[11px] text-slate-600">Closes in 6 days for September schemes (₹2.14L at stake).</p>
-                  </div>
-                </div>
-                <div className="flex gap-2.5 p-2 bg-teal-50/60 rounded-lg border border-teal-100">
-                  <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-slate-800">Bank Auto-Match 94.8%</p>
-                    <p className="text-[11px] text-slate-600">201 of 212 statements matched automatically.</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
